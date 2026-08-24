@@ -638,6 +638,10 @@ const ZanNet = (function(){
       await init();
       await ref(code).set(jsonString);
     },
+    async remove(code){
+      await init();
+      await ref(code).remove();
+    },
     // 変更をリアルタイムで受け取る。戻り値を呼ぶと購読解除
     watch(code, cb){
       let r=null, handler=null;
@@ -1238,6 +1242,10 @@ async function loadGame(code){
 async function saveGame(state){
   await ZanNet.set(state.code, JSON.stringify(slimState(state)));
 }
+// 誰もいなくなった部屋は消しておく（次に同じ部屋番号を使った時に作り直せるようにするため）
+async function deleteGame(code){
+  try{ await ZanNet.remove(code); }catch(e){ console.error("[deleteGame]", e); }
+}
 async function updateGame(code, mutator){
   const state = await loadGame(code);
   if(!state) return null;
@@ -1601,6 +1609,8 @@ async function doJoin(name, code){
   if(btn){ btn.disabled=true; btn.textContent="接続中…"; }
   try{
     let state = await loadGame(code);
+    // 中身が空になった部屋（全員退出済みなど）は、作り直して主催者不在を防ぐ
+    if(state && (!state.players || state.players.length===0)) state = null;
     const myId = uid();
     let me = {id:myId, name};
     if(!state){
@@ -1620,6 +1630,15 @@ async function doJoin(name, code){
       if(state.players.length>=8){ showAlert("この部屋は満員です（最大8人）。"); return; }
       if(state.players.some(p=>p.name===name)){ showAlert("同じ名前のプレイヤーが既にいます。別の名前にしてください。"); return; }
       state.players.push(me);
+      // 主催者が抜けたまま残っている部屋を引き取る
+      if(!state.players.some(pl=>pl.id===state.hostId)){
+        state.hostId = state.players[0].id;
+        log(state, `${state.players[0].name} が新しい主催者になった。`);
+      }
+      await saveGame(state);
+    }
+    if(!state.players.some(pl=>pl.id===state.hostId)){
+      state.hostId = state.players[0].id;
       await saveGame(state);
     }
     await saveMe(code, me);
@@ -1754,9 +1773,10 @@ function renderLobby(){
       <p class="muted">部屋番号「${esc(state.code)}」を仲間に伝えて、このページを開いて参加してもらってください。3〜8人集まったら主催者がゲームを開始できます。</p>
       <div class="row">
         ${isHost? `<button class="btn-main" id="btn-start" ${state.players.length<3?'disabled':''}>ゲームを開始する</button>` : ""}
+        ${!isHost? `<button class="btn-ghost" id="btn-claim-host">主催者を引き継ぐ</button>` : ""}
         <button class="btn-ghost" id="btn-leave-lobby">ロビーを退出する</button>
       </div>
-      ${!isHost? `<p class="muted" style="margin-top:8px">主催者（${esc(state.players.find(p=>p.id===state.hostId)?.name||'')}）の開始を待っています…</p>` : ""}
+      ${!isHost? `<p class="muted" style="margin-top:8px">主催者（${esc(state.players.find(p=>p.id===state.hostId)?.name||'')}）の開始を待っています…<br>主催者が通信を切ったまま戻らない場合は「主催者を引き継ぐ」で開始役を代われます。</p>` : ""}
     </div>
     <div class="card-box">
       <h2>このアプリについて</h2>
@@ -1769,6 +1789,11 @@ function renderLobby(){
   wrap.querySelector("#btn-leave-lobby").onclick=()=>{
     showConfirm("ロビーを退出しますか？", "この部屋から抜けます。再度参加するには、もう一度名前と部屋番号を入力してください。", leaveLobby, "退出する");
   };
+  if(!isHost){
+    wrap.querySelector("#btn-claim-host").onclick=()=>{
+      showConfirm("主催者を引き継ぎますか？", "あなたがこの部屋の主催者になり、ゲームを開始できるようになります。現在の主催者が接続を切ったまま戻らない場合に使ってください。", claimHost, "引き継ぐ");
+    };
+  }
   wrap.querySelector("#btn-rules-lobby").onclick=showRulesModal;
   wrap.querySelector("#btn-cardlist-lobby").onclick=showCardListModal;
   if(isHost){
@@ -1782,6 +1807,18 @@ function renderLobby(){
     });
   }
   return wrap;
+}
+// 主催者がタブを閉じたまま戻らない場合、他の参加者が開始役を引き継げるようにする
+async function claimHost(){
+  if(!CODE) return;
+  await updateGame(CODE, (state)=>{
+    if(state.phase!=="lobby") return false;
+    if(state.hostId===ME.id) return false;
+    if(!state.players.some(pl=>pl.id===ME.id)) return false;
+    state.hostId = ME.id;
+    log(state, `${ME.name} が主催者を引き継いだ。`);
+  });
+  GAME=await loadGame(CODE); render();
 }
 async function kickPlayer(targetId){
   if(!CODE) return;
@@ -1797,15 +1834,23 @@ async function kickPlayer(targetId){
 }
 async function leaveLobby(){
   if(CODE){
+    let emptied = false;
     await updateGame(CODE, (state)=>{
       if(state.phase!=="lobby") return false;
-      state.players = state.players.filter(pl=>pl.id!==ME.id);
-      if(state.hostId===ME.id && state.players.length>0){
+      state.players = (state.players||[]).filter(pl=>pl.id!==ME.id);
+      if(state.players.length===0){ emptied = true; return; }
+      if(state.hostId===ME.id){
         state.hostId = state.players[0].id;
         log(state, `${state.players[0].name} が新しい主催者になった。`);
       }
       log(state, `${ME.name} がロビーを退出した。`);
     });
+    // 最後の1人が退出したら部屋ごと削除する（主催者不在の空き部屋が残らないようにするため）
+    if(emptied){
+      stopSync();
+      await deleteGame(CODE);
+      try{ sessionStorage.removeItem(meKey(CODE)); }catch(e){}
+    }
   }
   stopSync();
   sessionStorage.removeItem("zan_code");
@@ -4062,7 +4107,37 @@ function cardPlayability(state, p, card){
     return {ok:true};
   }
   if(card.name==="遊女"){
-    if(otherActivePlayers(state).length===0) return {ok:false, short:"対象なし", reason:"対象にできる他のプレイヤーがいないため、「遊女」は使用できません。"};
+    // 手札も場のカードも持たない相手しかいない場合は捨てさせるものが無い
+    const cands = otherActivePlayers(state).filter(pid=>{
+      const t = state.playerState[pid];
+      return t.hand.length>0 || t.kakugo.length>0;
+    });
+    if(cands.length===0) return {ok:false, short:"対象なし", reason:"捨てさせられるカード（手札または場の覚悟カード）を持っている他のプレイヤーがいないため、「遊女」は使用できません。"};
+    return {ok:true};
+  }
+  if(card.name==="呼吸"){
+    // 負傷していなければ回復する対象が無く、相手にカードを1枚与えるだけになる
+    if(p.soul>=p.maxSoul) return {ok:false, short:"負傷なし", reason:"「呼吸」は自分の負傷をすべて回復するカードですが、あなたは負傷していないため回復する負傷がありません。"};
+    return {ok:true};
+  }
+  if(card.name==="直観"){
+    const cands = state.seatOrder.filter(pid=>{
+      const t = state.playerState[pid];
+      return pid!==ME.id && t.soul===t.maxSoul && t.hand.length>0;
+    });
+    if(cands.length===0) return {ok:false, short:"対象なし", reason:"負傷しておらず手札を持っている他のプレイヤーがいないため、「直観」は使用できません。"};
+    return {ok:true};
+  }
+  if(card.name==="柔術" || card.name==="気合"){
+    const cands = state.seatOrder.filter(pid=>pid!==ME.id && state.playerState[pid].soul>0);
+    if(cands.length===0) return {ok:false, short:"対象なし", reason:`対象にできる他のプレイヤーがいないため、「${card.name}」は使用できません。`};
+    return {ok:true};
+  }
+  if(card.name==="家臣" || card.name==="茶会"){
+    // 山札も捨て札も尽きている場合は引けない（捨て札があればシャッフルして山札に戻る）
+    if(state.deck.length===0 && state.discard.length===0){
+      return {ok:false, short:"山札なし", reason:`山札も捨て札も残っていないため、「${card.name}」でカードを引くことができません。`};
+    }
     return {ok:true};
   }
   return {ok:true};
