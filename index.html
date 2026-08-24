@@ -43,10 +43,15 @@ h1,h2,h3,.mincho{font-family:"Shippori Mincho",serif;}
   #app{max-width:1360px;}
   #app.app-full{max-width:none;padding-left:24px;padding-right:24px;}
   .game-columns{
-    display:grid;grid-template-columns:minmax(0,1fr) minmax(420px,600px);
+    display:grid;
+    /* 右カラムは「600px」と「gapを引いた画面の半分」の小さい方までしか広がらない。
+       これにより左カラム（盤面）は常に表示幅の半分以上を確保できる。 */
+    grid-template-columns:minmax(0,1fr) minmax(0, min(600px, calc(50% - 20px)));
     gap:20px;align-items:start;
   }
+  .game-col-left{min-width:0;}
   .game-col-right{
+    min-width:0;
     position:sticky;top:12px;max-height:calc(100vh - 24px);overflow-y:auto;
     padding-right:2px;
   }
