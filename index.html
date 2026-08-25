@@ -3,6 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- 更新を反映しやすくするため、ブラウザ・GitHub Pages側のキャッシュを避ける -->
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <title>斬 -サムライソード- オンライン</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@500;700;800&family=Noto+Sans+JP:wght@400;500;700;900&display=swap" rel="stylesheet">
@@ -400,6 +404,10 @@ hr.rule{border:none;border-top:1px dashed var(--paper-line);margin:12px 0;}
 .bujin-info{flex:1;min-width:0;}
 .bujin-name{font-family:"Shippori Mincho",serif;font-weight:700;font-size:14px;color:var(--indigo-deep);}
 .bujin-fx{font-size:11px;color:#4a4437;margin-top:2px;line-height:1.4;}
+.bujin-row.pickable{cursor:pointer;transition:box-shadow .15s, border-color .15s, transform .15s;}
+.bujin-row.pickable:hover{border-color:var(--vermillion);box-shadow:0 3px 10px rgba(184,69,30,0.18);transform:translateY(-1px);}
+.bujin-row.taken{opacity:0.4;filter:grayscale(70%);}
+.bujin-mode-btn.active{background:var(--indigo);color:#fff;border-color:var(--indigo);}
 
 /* ---------- attack panel ---------- */
 .attack-banner{
@@ -408,20 +416,6 @@ hr.rule{border:none;border-top:1px dashed var(--paper-line);margin:12px 0;}
   border-radius:5px;padding:10px 12px;margin-bottom:10px;font-size:13px;
   box-shadow:0 2px 6px rgba(184,69,30,0.12);
 }
-.flash-banner{
-  background:linear-gradient(160deg, rgba(169,120,31,0.1), rgba(169,120,31,0.03));
-  border:1px solid var(--gold);border-left:4px solid var(--gold);
-  padding:10px 12px;box-shadow:0 2px 6px rgba(169,120,31,0.1);
-}
-.flash-label{
-  display:flex;align-items:center;gap:6px;font-family:"Shippori Mincho",serif;font-weight:700;
-  font-size:12px;color:var(--gold);letter-spacing:0.05em;margin-bottom:5px;
-}
-.flash-dot{width:7px;height:7px;border-radius:50%;background:var(--gold);display:inline-block;animation:flashPulse 1.6s ease-in-out infinite;}
-@keyframes flashPulse{0%,100%{opacity:1;}50%{opacity:0.25;}}
-.flash-line{font-size:12.5px;color:var(--ink);line-height:1.6;}
-.flash-line:not(:last-child){margin-bottom:2px;padding-bottom:2px;border-bottom:1px dashed var(--paper-line);}
-
 /* ---------- 攻撃カットイン演出 ---------- */
 .cutin-overlay{position:fixed;inset:0;z-index:2000;pointer-events:none;display:flex;align-items:center;overflow:hidden;}
 .cutin-bar{
@@ -456,6 +450,50 @@ hr.rule{border:none;border-top:1px dashed var(--paper-line);margin:12px 0;}
 @keyframes cutinSlideIn{from{transform:translateX(-120%) skewX(-8deg);}to{transform:translateX(0) skewX(-8deg);}}
 @keyframes cutinSlideOut{from{transform:translateX(0) skewX(-8deg);}to{transform:translateX(120%) skewX(-8deg);}}
 
+/* ---------- 「あなたの番です」専用カットイン（既存のサイドバー型とは別デザイン：中央から拡大＋放射状フラッシュ） ---------- */
+.cutin-overlay.myturn-overlay{align-items:center;justify-content:center;background:rgba(8,6,4,0);animation:myturnBgFlash .5s ease-out forwards;}
+@keyframes myturnBgFlash{
+  0%{background:rgba(8,6,4,0);}
+  12%{background:rgba(8,6,4,0.55);}
+  100%{background:rgba(8,6,4,0.55);}
+}
+.myturn-burst{
+  position:absolute;inset:-20%;
+  background:radial-gradient(circle, rgba(255,207,110,0.55) 0%, rgba(255,207,110,0.16) 32%, rgba(255,207,110,0) 62%);
+  transform:scale(0.2);opacity:0;
+  animation:myturnBurstOut .9s cubic-bezier(.15,.7,.3,1) forwards;
+}
+@keyframes myturnBurstOut{
+  0%{transform:scale(0.2);opacity:0;}
+  25%{opacity:1;}
+  100%{transform:scale(1.5);opacity:0;}
+}
+.myturn-banner{
+  position:relative;display:flex;flex-direction:column;align-items:center;gap:10px;
+  padding:30px 56px;text-align:center;
+  background:linear-gradient(180deg, rgba(24,19,13,0.97), rgba(62,20,16,0.96));
+  border:3px solid var(--gold);border-radius:6px;
+  box-shadow:0 0 0 1px rgba(255,207,110,0.35), 0 20px 60px rgba(0,0,0,0.7), 0 0 60px rgba(255,207,110,0.25);
+  transform:scale(0.55);opacity:0;
+  animation:myturnPop .5s cubic-bezier(.2,1.4,.4,1) forwards, myturnGlow 1.6s ease-in-out .5s infinite;
+}
+.cutin-overlay.cutin-out.myturn-overlay .myturn-banner{animation:myturnPopOut .35s ease-in forwards;}
+@keyframes myturnPop{
+  0%{transform:scale(0.55);opacity:0;}
+  60%{transform:scale(1.08);opacity:1;}
+  100%{transform:scale(1);opacity:1;}
+}
+@keyframes myturnPopOut{from{transform:scale(1);opacity:1;}to{transform:scale(0.7);opacity:0;}}
+@keyframes myturnGlow{
+  0%,100%{box-shadow:0 0 0 1px rgba(255,207,110,0.35), 0 20px 60px rgba(0,0,0,0.7), 0 0 40px rgba(255,207,110,0.2);}
+  50%{box-shadow:0 0 0 1px rgba(255,207,110,0.6), 0 20px 60px rgba(0,0,0,0.7), 0 0 78px rgba(255,207,110,0.5);}
+}
+.myturn-portrait{width:112px;height:112px;border-radius:50%;object-fit:cover;object-position:top center;border:3px solid var(--gold);box-shadow:0 0 22px rgba(255,207,110,0.5);}
+.myturn-noimg{width:112px;height:112px;border-radius:50%;background:var(--indigo-deep);color:var(--gold);display:flex;align-items:center;justify-content:center;font-family:"Shippori Mincho",serif;font-weight:800;font-size:44px;border:3px solid var(--gold);}
+.myturn-tag{font-family:"Shippori Mincho",serif;font-weight:700;font-size:12px;color:#2B2419;background:var(--gold);padding:2px 14px;border-radius:10px;letter-spacing:0.15em;}
+.myturn-title{font-family:"Shippori Mincho",serif;font-weight:800;font-size:34px;color:#fff;letter-spacing:0.06em;text-shadow:0 2px 10px rgba(0,0,0,0.7);}
+.myturn-sub{font-size:14px;color:#f0ebdc;font-weight:700;letter-spacing:0.04em;}
+
 /* ---------- log ---------- */
 .log-box{max-height:170px;overflow-y:auto;font-size:12px;background:#FBF8F0;border:1px solid var(--paper-line);border-radius:4px;padding:8px 10px;}
 .log-modal-box{
@@ -479,6 +517,20 @@ hr.rule{border:none;border-top:1px dashed var(--paper-line);margin:12px 0;}
 .shuriken-note{font-size:11px;color:var(--gold);font-weight:700;}
 .result-team.win{border:2px solid var(--gold);background:rgba(169,120,31,0.08);}
 .result-row{display:flex;justify-content:space-between;font-size:13px;padding:3px 0;}
+.score-table-el{width:100%;border-collapse:collapse;font-size:12.5px;margin-top:6px;}
+.score-table-el th{
+  font-family:"Shippori Mincho",serif;font-weight:700;font-size:11px;color:#7a7260;
+  text-align:right;padding:5px 6px;border-bottom:2px solid var(--paper-line);white-space:nowrap;
+}
+.score-table-el th:first-child{text-align:left;}
+.score-table-el td{padding:6px 6px;border-bottom:1px solid var(--paper-line);text-align:right;white-space:nowrap;}
+.score-table-el td:first-child{text-align:left;white-space:normal;}
+.score-table-el tr:last-child td{border-bottom:none;}
+.score-table-el .sc-name{font-weight:700;}
+.score-table-el .sc-reason{display:block;font-size:10px;color:#9a927f;font-weight:400;margin-top:1px;}
+.score-table-el .sc-op{color:#9a927f;font-size:11px;}
+.score-table-el .sc-total{font-weight:800;color:var(--vermillion-dark);font-size:14px;}
+.score-table-el tfoot td{border-top:2px solid var(--paper-line);border-bottom:none;padding-top:8px;font-weight:700;}
 
 /* ---------- modal ---------- */
 #modal-overlay{
@@ -669,11 +721,12 @@ ZanNet.init().catch(e=>console.error("[ZanNet] init failed", e));
 <script>
 /* ---------- 画面内モーダル（ブラウザ標準のalert/confirm/promptはサンドボックスで動かないため使用しない） ---------- */
 function closeModal(){
-  document.getElementById("modal-overlay").classList.add("hidden");
-  document.getElementById("modal-overlay").dataset.noDismiss="";
+  const overlay = document.getElementById("modal-overlay");
+  overlay.classList.add("hidden");
+  overlay.dataset.noDismiss="";
+  overlay.dataset.stateModal=""; // これを消し忘れると、直後に別プレイヤーの操作で再描画された時、状態駆動の自動クローズ処理がローカルの選択ポップアップまで巻き込んで閉じてしまう
   const box=document.getElementById("modal-box");
   box.innerHTML=""; box.className="";
-  box.className="";
 }
 function showHtmlModal(html, wide){
   const box=document.getElementById("modal-box");
@@ -901,6 +954,7 @@ function showPlayerPicker(title, state, entries, onPick, subtitle){
   box.appendChild(cancelBtn);
   document.getElementById("modal-overlay").classList.remove("hidden");
   document.getElementById("modal-overlay").dataset.noDismiss="";
+  document.getElementById("modal-overlay").dataset.stateModal=""; // ローカルの選択ポップアップは状態駆動ではないため、自動クローズの対象から外す
 }
 function showTargetPicker(title, targets, onPick){
   // targets: [{label, disabled, onClick}]
@@ -919,6 +973,7 @@ function showTargetPicker(title, targets, onPick){
   box.appendChild(cancelBtn);
   document.getElementById("modal-overlay").classList.remove("hidden");
   document.getElementById("modal-overlay").dataset.noDismiss="";
+  document.getElementById("modal-overlay").dataset.stateModal=""; // ローカルの選択ポップアップは状態駆動ではないため、自動クローズの対象から外す
 }
 document.getElementById("modal-overlay").addEventListener("click",(e)=>{
   if(e.target.id!=="modal-overlay") return;
@@ -1022,12 +1077,14 @@ const WEAPON_IMG_DIR = "images/weapon/";
 const KAKUGO_IMG_DIR = "images/kakugo/";
 const ACTION_IMG_DIR = "images/action/";
 const BUJIN_IMG_DIR  = "images/bujin/";
+// ファイル名は日本語ではなく連番の英数字にしている（zip解凍時の文字化けを避けるため）。
+// 並び順は WEAPON_DATA / KAKUGO_DATA / ACTION_DATA / BUJIN_DATA の定義順と一致させている。
 const CARD_ILLUST_B64 = {};
-WEAPON_DATA.forEach(([name])=>{ CARD_ILLUST_B64[name] = WEAPON_IMG_DIR + encodeURIComponent(name) + ".webp"; });
-KAKUGO_DATA.forEach(([name])=>{ CARD_ILLUST_B64[name] = KAKUGO_IMG_DIR + encodeURIComponent(name) + ".webp"; });
-ACTION_DATA.forEach(([name])=>{ CARD_ILLUST_B64[name] = ACTION_IMG_DIR + encodeURIComponent(name) + ".webp"; });
+WEAPON_DATA.forEach(([name], i)=>{ CARD_ILLUST_B64[name] = WEAPON_IMG_DIR + "weapon_" + String(i+1).padStart(2,"0") + ".webp"; });
+KAKUGO_DATA.forEach(([name], i)=>{ CARD_ILLUST_B64[name] = KAKUGO_IMG_DIR + "kakugo_" + String(i+1).padStart(2,"0") + ".webp"; });
+ACTION_DATA.forEach(([name], i)=>{ CARD_ILLUST_B64[name] = ACTION_IMG_DIR + "action_" + String(i+1).padStart(2,"0") + ".webp"; });
 const BUJIN_ILLUST_B64 = {};
-BUJIN_DATA.forEach(([name])=>{ BUJIN_ILLUST_B64[name] = BUJIN_IMG_DIR + encodeURIComponent(name) + ".webp"; });
+BUJIN_DATA.forEach(([name], i)=>{ BUJIN_ILLUST_B64[name] = BUJIN_IMG_DIR + "bujin_" + String(i+1).padStart(2,"0") + ".webp"; });
 
 function illustUrl(dataUri){ return dataUri || null; }
 Object.keys(CARD_ILLUST_B64).forEach(name=>{ if(CARD_META[name]) CARD_META[name].illust = CARD_ILLUST_B64[name]; });
@@ -1111,6 +1168,7 @@ const ROLE_TABLE = {
 };
 
 let AUDIO_CTX = null;
+let prevMyTurnDrawActive = false; // 「自分の番」カットインを、手番開始の立ち上がりでのみ1回発火させるための記録
 let SOUND_ON = (localStorage.getItem("zan_sound")!=="off");
 function uid(){return Math.random().toString(36).slice(2)+Date.now().toString(36);}
 function shuffle(a){const arr=a.slice();for(let i=arr.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[arr[i],arr[j]]=[arr[j],arr[i]];}return arr;}
@@ -1129,6 +1187,20 @@ function buildDeck(){
   return cards;
 }
 function bujinPool(){return BUJIN_DATA.map(([name,hp,effect])=>({name,hp,effect}));}
+const BUJIN_MODE_LIST = [
+  {key:"random", label:"ランダム", desc:"23種の武人から、全員に重複なくランダムに1体ずつ割り当てます（従来通り）。"},
+  {key:"pick3", label:"3ピック", desc:"各プレイヤーに3体の候補を提示し、その中から1体を選びます。他の人と候補が被ることはありますが、早い者勝ちで確定します。"},
+  {key:"draft", label:"ドラフト", desc:"人数+1体の武人を公開し、将軍から手番順に1体ずつ選んでいきます（1体は誰にも選ばれず残ります）。"}
+];
+async function setBujinMode(mode){
+  if(!BUJIN_MODE_LIST.some(m=>m.key===mode)) return;
+  await updateGame(CODE, (state)=>{
+    if(state.phase!=="lobby") return false;
+    if(state.hostId!==ME.id) return false;
+    state.bujinMode = mode;
+  });
+  GAME=await loadGame(CODE); render();
+}
 
 function initialHonor(role,n){
   if(n===3) return role==="将軍" ? 6 : 3;
@@ -1629,6 +1701,28 @@ function renderEntry(){
 }
 
 /* ---------- lobby ---------- */
+// 武人（役割）が全員分決まった後の共通の締めくくり処理：回復フェイズを回し、開始前確認へ進む
+function finishGameStart(state){
+  const shogunId = state.seatOrder.find(id=>state.playerState[id].role==="将軍");
+  state.turnIndex=0;
+  state.turnPhase="recovery";
+  log(state, `ゲーム開始。将軍は ${state.playerState[shogunId].name}。`);
+  runRecovery(state);
+  state.pendingGameStart = {id:uid(), ackBy:[]};
+}
+// 武人の割り当てを確定する（3ピック／ドラフトの選択結果を反映）
+function applyBujinAssignment(state, picks){
+  // picks: {playerId: bujinName}
+  Object.keys(picks).forEach(id=>{
+    const meta = BUJIN_META[picks[id]];
+    const p = state.playerState[id];
+    if(!p || !meta) return;
+    p.bujin = picks[id];
+    p.bujinEffect = meta.effect;
+    p.maxSoul = meta.hp;
+    p.soul = meta.hp;
+  });
+}
 async function startGame(){
   const state = GAME;
   const n = state.players.length;
@@ -1636,15 +1730,13 @@ async function startGame(){
   const ids = state.players.map(p=>p.id);
   let seatOrder = shuffle(ids);
   const roles = shuffle(ROLE_TABLE[n]);
-  const bujins = shuffle(bujinPool()).slice(0,n);
   const playerState={};
   seatOrder.forEach((id,i)=>{
     const nameObj = state.players.find(p=>p.id===id);
     const role = roles[i];
-    const bj = bujins[i];
     playerState[id]={
-      id, name:nameObj.name, role, bujin:bj.name, bujinEffect:bj.effect,
-      maxSoul:bj.hp, soul:bj.hp, honor: initialHonor(role,n),
+      id, name:nameObj.name, role, bujin:null, bujinEffect:null,
+      maxSoul:null, soul:null, honor: initialHonor(role,n),
       hand:[], kakugo:[]
     };
   });
@@ -1675,8 +1767,6 @@ async function startGame(){
 
   state.phase="playing";
   state.seatOrder=seatOrder;
-  state.turnIndex=0;
-  state.turnPhase="recovery";
   state.deck=deck;
   state.discard=[];
   state.playerState=playerState;
@@ -1684,11 +1774,70 @@ async function startGame(){
   state.lastHonorZeroEvent=null;
   state.lastEliminationEvent=null;
   state.log=state.log||[];
-  log(state, `ゲーム開始。将軍は ${playerState[shogunId].name}。`);
-  runRecovery(state);
-  state.pendingGameStart = {id:uid(), ackBy:[]};
+
+  const mode = state.bujinMode || "random";
+  if(mode==="random"){
+    const bujins = shuffle(bujinPool()).slice(0,n);
+    const picks = {};
+    seatOrder.forEach((id,i)=>{ picks[id]=bujins[i].name; });
+    applyBujinAssignment(state, picks);
+    finishGameStart(state);
+  } else if(mode==="pick3"){
+    // 各プレイヤーに、全23種からランダムに3枚（重複なし）を独立して提示する。他人の3枚と重なることはあるが、
+    // 早い者勝ちで確定していくため、選ぼうとした時点で他人に取られていれば選び直しになる。
+    const options = {};
+    seatOrder.forEach(id=>{ options[id] = shuffle(BUJIN_DATA.map(b=>b[0])).slice(0,3); });
+    state.pendingBujinPick3 = {id:uid(), options, picked:{}};
+  } else if(mode==="draft"){
+    // 人数+1枚を公開し、将軍から手番順に1枚ずつ選んでいく（1枚は誰にも選ばれず残る）
+    const pool = shuffle(BUJIN_DATA.map(b=>b[0])).slice(0, n+1);
+    state.pendingBujinDraft = {id:uid(), pool, order:seatOrder.slice(), turnIdx:0, picks:{}};
+  }
   await saveGame(state);
   GAME=state; VIEW="game"; render();
+}
+async function resolveBujinPick3(bujinName){
+  await updateGame(CODE, (state)=>{
+    const pb = state.pendingBujinPick3;
+    if(!pb) return false;
+    if(pb.picked[ME.id]) return false;
+    const myOptions = pb.options[ME.id]||[];
+    const takenNames = new Set(Object.values(pb.picked));
+    const allMineTaken = myOptions.every(nm=>takenNames.has(nm));
+    // 自分の3候補が全て他人に取られてしまった場合の救済：残っている武人から自由に選べる
+    if(!myOptions.includes(bujinName) && !(allMineTaken && !takenNames.has(bujinName) && BUJIN_DATA.some(b=>b[0]===bujinName))) return false;
+    if(takenNames.has(bujinName)){
+      log(state, `${state.playerState[ME.id].name} が選ぼうとした「${bujinName}」は、既に他のプレイヤーが選んでいた。`);
+      return; // 選び直してもらう（画面は自動更新される）
+    }
+    pb.picked[ME.id] = bujinName;
+    log(state, `${state.playerState[ME.id].name} が武人「${bujinName}」を選んだ。`);
+    if(Object.keys(pb.picked).length >= state.seatOrder.length){
+      applyBujinAssignment(state, pb.picked);
+      state.pendingBujinPick3 = null;
+      finishGameStart(state);
+    }
+  });
+  GAME=await loadGame(CODE); render();
+}
+async function resolveBujinDraftPick(bujinName){
+  await updateGame(CODE, (state)=>{
+    const pd = state.pendingBujinDraft;
+    if(!pd) return false;
+    const currentId = pd.order[pd.turnIdx];
+    if(currentId!==ME.id) return false;
+    if(!pd.pool.includes(bujinName)) return false;
+    pd.pool = pd.pool.filter(nm=>nm!==bujinName);
+    pd.picks[ME.id] = bujinName;
+    log(state, `${state.playerState[ME.id].name} が武人「${bujinName}」を選んだ。`);
+    pd.turnIdx += 1;
+    if(pd.turnIdx >= pd.order.length){
+      applyBujinAssignment(state, pd.picks);
+      state.pendingBujinDraft = null;
+      finishGameStart(state);
+    }
+  });
+  GAME=await loadGame(CODE); render();
 }
 async function ackGameStart(){
   await updateGame(CODE, (state)=>{
@@ -1716,6 +1865,15 @@ function renderLobby(){
       <h2>ロビー（${state.players.length}/8人）</h2>
       <div class="lobby-players">${state.players.map(p=>`<div class="lobby-chip ${p.id===state.hostId?'host':''}">${esc(p.name)}${p.id===ME.id?'（あなた）':''}${(isHost && p.id!==ME.id)?` <button class="btn-kick" data-kick="${esc(p.id)}" title="キック">✕</button>`:''}</div>`).join("")}</div>
       <p class="muted">部屋番号「${esc(state.code)}」を仲間に伝えて、このページを開いて参加してもらってください。3〜8人集まったら主催者がゲームを開始できます。</p>
+      <hr class="rule">
+      <div class="bujin-mode-select">
+        <div class="muted" style="font-size:12px;margin-bottom:6px">武人の決め方${isHost?'':'（主催者が選択中）'}</div>
+        <div class="row" style="gap:6px;flex-wrap:wrap">
+          ${BUJIN_MODE_LIST.map(m=>`<button class="btn-ghost btn-sm bujin-mode-btn ${(state.bujinMode||"random")===m.key?'active':''}" data-mode="${m.key}" ${isHost?'':'disabled'}>${esc(m.label)}</button>`).join("")}
+        </div>
+        <p class="muted" style="font-size:11.5px;margin-top:6px">${esc(BUJIN_MODE_LIST.find(m=>m.key===(state.bujinMode||"random")).desc)}</p>
+      </div>
+      <hr class="rule">
       <div class="row">
         ${isHost? `<button class="btn-main" id="btn-start" ${state.players.length<3?'disabled':''}>ゲームを開始する</button>` : ""}
         ${!isHost? `<button class="btn-ghost" id="btn-claim-host">主催者を引き継ぐ</button>` : ""}
@@ -1741,6 +1899,11 @@ function renderLobby(){
   }
   wrap.querySelector("#btn-rules-lobby").onclick=showRulesModal;
   wrap.querySelector("#btn-cardlist-lobby").onclick=showCardListModal;
+  if(isHost){
+    wrap.querySelectorAll(".bujin-mode-btn").forEach(btn=>{
+      btn.onclick=()=>setBujinMode(btn.dataset.mode);
+    });
+  }
   if(isHost){
     wrap.querySelectorAll("[data-kick]").forEach(btn=>{
       btn.onclick=(e)=>{
@@ -2038,6 +2201,8 @@ const SKIP_AFTER_SEC = 25;
 function pendingDescriptor(state){
   if(!state) return null;
   const list = [
+    ["pendingBujinPick3","武人の選択（3ピック）"],
+    ["pendingBujinDraft","武人の選択（ドラフト）"],
     ["pendingGameStart","開始前の確認"],
     ["pendingReveal","開示の確認"],
     ["pendingDate","政宗の開示選択"],
@@ -2058,6 +2223,37 @@ function hostForceResolve(state){
   const d = pendingDescriptor(state);
   if(!d) return false;
   const k = d.key;
+  if(k==="pendingBujinPick3"){
+    const pb = state.pendingBujinPick3;
+    const takenNames = new Set(Object.values(pb.picked));
+    state.seatOrder.forEach(id=>{
+      if(pb.picked[id]) return;
+      const avail = (pb.options[id]||[]).filter(nm=>!takenNames.has(nm));
+      const pick = avail.length>0 ? avail[Math.floor(Math.random()*avail.length)] : shuffle(BUJIN_DATA.map(b=>b[0])).find(nm=>!takenNames.has(nm));
+      pb.picked[id] = pick;
+      takenNames.add(pick);
+    });
+    applyBujinAssignment(state, pb.picked);
+    state.pendingBujinPick3 = null;
+    log(state, `主催者が「${d.label}」をスキップした（未選択のプレイヤーはランダムに決定）。`);
+    finishGameStart(state);
+    return true;
+  }
+  if(k==="pendingBujinDraft"){
+    const pd = state.pendingBujinDraft;
+    log(state, `主催者が「${d.label}」をスキップした（残りはランダムに決定）。`);
+    while(pd.turnIdx < pd.order.length){
+      const currentId = pd.order[pd.turnIdx];
+      const pick = pd.pool[Math.floor(Math.random()*pd.pool.length)];
+      pd.pool = pd.pool.filter(nm=>nm!==pick);
+      pd.picks[currentId] = pick;
+      pd.turnIdx += 1;
+    }
+    applyBujinAssignment(state, pd.picks);
+    state.pendingBujinDraft = null;
+    finishGameStart(state);
+    return true;
+  }
   if(k==="pendingGameStart" || k==="pendingReveal"){
     state[k] = null;
     log(state, `主催者が「${d.label}」をスキップした（全員確認済みとして扱う）。`);
@@ -3242,13 +3438,100 @@ function phaseLabel(ph){
   return {recovery:"回復フェイズ",draw:"ドローフェイズ",action:"行動フェイズ",discard:"捨て札フェイズ"}[ph]||ph;
 }
 
+// 武人選択カード1体分の行を作る（bujinName: 表示する武人名、opts.pickable: クリック可能か、opts.taken: 既に取られ済み表示にするか）
+function bujinPickRow(bujinName, opts){
+  opts = opts || {};
+  const meta = BUJIN_META[bujinName] || {};
+  const img = illustUrl(meta.illust);
+  const row = el(`<div class="bujin-row ${opts.pickable?'pickable':''} ${opts.taken?'taken':''}">
+    ${img? `<img src="${img}" alt="${esc(bujinName)}" loading="lazy" referrerpolicy="no-referrer">` : `<div class="bujin-noimg">${esc(bujinName.slice(0,1))}</div>`}
+    <div class="bujin-info">
+      <div class="bujin-name">${esc(bujinName)}${opts.taken?'　<span class="muted" style="font-weight:400;font-size:11px">（選択済み）</span>':''}</div>
+      <div class="muted" style="font-size:11px;margin:2px 0">魂コマ：${meta.hp}</div>
+      <div class="bujin-fx">${esc(meta.effect||'')}</div>
+    </div>
+  </div>`);
+  if(opts.pickable && !opts.taken) row.onclick=opts.onClick;
+  return row;
+}
+// 武人選択方式「3ピック」：自分の3候補から1体を選ぶ画面
+function renderBujinPick3(state, p){
+  const pb = state.pendingBujinPick3;
+  const myOptions = pb.options[ME.id]||[];
+  const iPicked = !!pb.picked[ME.id];
+  const takenNames = new Set(Object.values(pb.picked));
+  const doneCount = Object.keys(pb.picked).length;
+  const waiting = state.seatOrder.filter(id=>!pb.picked[id]).map(id=>state.playerState[id].name);
+  const wrap = el(`<div>
+    <div class="hero">${heroSealHtml()}<div><h1>斬 -サムライソード-</h1><div class="sub">部屋：${esc(state.code)}／武人選択（3ピック）</div></div></div>
+    <div class="card-box">
+      <h2>あなたの3候補から1体を選んでください</h2>
+      <p class="muted">選択状況：${doneCount}/${state.seatOrder.length}人が決定済み${waiting.length? `（未定：${waiting.map(esc).join("、")}）`:""}</p>
+      <div id="pick3-list" class="bujin-list" style="margin-top:8px"></div>
+      ${iPicked? `<p class="muted" style="margin-top:10px">あなたは「${esc(pb.picked[ME.id])}」を選びました。他のプレイヤーの選択を待っています…</p>` : ""}
+    </div>
+  </div>`);
+  const list = wrap.querySelector("#pick3-list");
+  myOptions.forEach(name=>{
+    const taken = !iPicked && takenNames.has(name);
+    const row = bujinPickRow(name, {
+      pickable: !iPicked,
+      taken: iPicked ? name!==pb.picked[ME.id] : taken,
+      onClick: taken? null : ()=>resolveBujinPick3(name)
+    });
+    list.appendChild(row);
+  });
+  // 自分の3候補が全て他人に取られてしまった場合の救済：残っている武人から選べるようにする
+  const allMineTaken = !iPicked && myOptions.length>0 && myOptions.every(nm=>takenNames.has(nm));
+  if(allMineTaken){
+    const fallbackNote = el(`<p class="muted" style="margin-top:10px">あなたの3候補は全て他のプレイヤーに選ばれてしまいました。代わりに、まだ選ばれていない武人から選んでください。</p>`);
+    wrap.querySelector(".card-box").appendChild(fallbackNote);
+    const fbList = el(`<div class="bujin-list" style="margin-top:8px"></div>`);
+    BUJIN_DATA.map(b=>b[0]).filter(nm=>!takenNames.has(nm)).forEach(name=>{
+      fbList.appendChild(bujinPickRow(name, {pickable:true, onClick:()=>resolveBujinPick3(name)}));
+    });
+    wrap.querySelector(".card-box").appendChild(fbList);
+  }
+  return wrap;
+}
+// 武人選択方式「ドラフト」：将軍から手番順に1体ずつ選んでいく画面
+function renderBujinDraft(state, p){
+  const pd = state.pendingBujinDraft;
+  const currentId = pd.order[pd.turnIdx];
+  const isMyTurn = currentId===ME.id;
+  const wrap = el(`<div>
+    <div class="hero">${heroSealHtml()}<div><h1>斬 -サムライソード-</h1><div class="sub">部屋：${esc(state.code)}／武人選択（ドラフト）</div></div></div>
+    <div class="card-box">
+      <h2>${isMyTurn? "あなたの番です。武人を1体選んでください" : `${esc(state.playerState[currentId].name)} が選んでいます…`}</h2>
+      <p class="muted">選択順：${pd.order.map((id,i)=>`${i===pd.turnIdx?'▶':''}${esc(state.playerState[id].name)}${pd.picks[id]?`（${esc(pd.picks[id])}）`:''}`).join("　")}</p>
+      <div id="draft-pool" class="bujin-list" style="margin-top:8px"></div>
+    </div>
+  </div>`);
+  const list = wrap.querySelector("#draft-pool");
+  pd.pool.forEach(name=>{
+    list.appendChild(bujinPickRow(name, {
+      pickable: isMyTurn,
+      onClick: ()=>resolveBujinDraftPick(name)
+    }));
+  });
+  return wrap;
+}
 function renderGame(){
   const state=GAME;
-  const myTurn = state.seatOrder[state.turnIndex]===ME.id;
   const p = state.playerState[ME.id];
+  if(state.pendingBujinPick3) return renderBujinPick3(state, p);
+  if(state.pendingBujinDraft) return renderBujinDraft(state, p);
+  const myTurn = state.seatOrder[state.turnIndex]===ME.id;
   maybeQueueEvents(state);
   trackPendingWait(state);
   updateTurnNotification(state, p);
+  // 自分の手番が新しく始まった瞬間（ドローフェイズに入り、他の確認待ちも無い瞬間）だけ、専用の効果音とカットインで知らせる
+  const myDrawActive = myTurn && state.turnPhase==="draw" && !pendingDescriptor(state);
+  if(myDrawActive && !prevMyTurnDrawActive){
+    cutinLocalQueue.push({special:"myturn", p});
+    processCutinQueue();
+  }
+  prevMyTurnDrawActive = myDrawActive;
   const wrap = el(`<div>
     <div class="hero" style="flex-wrap:wrap;row-gap:10px">
       ${heroSealHtml()}
@@ -3269,6 +3552,9 @@ function renderGame(){
   };
 
   wrap.appendChild(renderSeats(state));
+  // 「盤面を確認する」で自分の応答バナーを埋め込み表示する際、盤面のすぐ下に出すための差し込み口
+  const peekSlot = el(`<div id="peek-slot"></div>`);
+  wrap.appendChild(peekSlot);
 
   // 応答待ちが長引いた場合、主催者が強制的に解決できるようにする（接続が切れたプレイヤー対策）
   const waitDesc = pendingDescriptor(state);
@@ -3286,16 +3572,6 @@ function renderGame(){
       };
     }
     wrap.appendChild(skipBox);
-  }
-
-  // 直近の動き：誰の応答も必要としない処理（家臣・茶会・遊女など）も含め、今何が起きたかを常時ひと目でわかるようにする
-  if(state.log && state.log.length>0){
-    const recent = state.log.slice(-3).reverse();
-    const flash = el(`<div class="card-box flash-banner">
-      <div class="flash-label"><span class="flash-dot"></span>直近の動き</div>
-      ${recent.map(l=>`<div class="flash-line">${esc(l)}</div>`).join("")}
-    </div>`);
-    wrap.appendChild(flash);
   }
 
   // my status card
@@ -3609,32 +3885,37 @@ function renderGame(){
 
   const logBox = el(`<div class="card-box"><h2>ログ</h2>
     <div class="log-box" id="log-box"></div>
-    <div class="row" style="margin-top:8px"><button class="btn-ghost btn-sm" id="btn-log-all">全ログを見る（${(state.log||[]).length}件）</button></div>
+    <div class="row" style="margin-top:8px"><button class="btn-ghost btn-sm" id="btn-log-all">それ以前を見る（全${(state.log||[]).length}件）</button></div>
   </div>`);
   const lb = logBox.querySelector("#log-box");
-  (state.log||[]).slice(-40).reverse().forEach(l=>{ lb.appendChild(el(`<div>${esc(l)}</div>`)); });
+  (state.log||[]).slice(-3).reverse().forEach(l=>{ lb.appendChild(el(`<div>${esc(l)}</div>`)); });
   logBox.querySelector("#btn-log-all").onclick=()=>showLogModal(state);
   wrap.appendChild(logBox);
 
   // PC表示ではできるだけスクロールが要らないよう、盤面・進行状況を左に、状態・手札・ログを右にまとめる
+  // 右カラムはログを最上部に固定表示したいので、自動振り分けの対象からは外し、後で明示的な順番で積み直す
   const rightSet = new Set([statusBox, handBox, logBox]);
   const leftCol = el(`<div class="game-col-left"></div>`);
   const rightCol = el(`<div class="game-col-right"></div>`);
   Array.from(wrap.children).slice(1).forEach(child=>{
-    (rightSet.has(child) ? rightCol : leftCol).appendChild(child);
+    if(rightSet.has(child)) return;
+    leftCol.appendChild(child);
   });
+  rightCol.appendChild(logBox);
+  rightCol.appendChild(statusBox);
+  rightCol.appendChild(handBox);
   const columns = el(`<div class="game-columns"></div>`);
   columns.appendChild(leftCol);
   columns.appendChild(rightCol);
   wrap.appendChild(columns);
 
   // 自分の応答が必要な場面は、既定でポップアップに出す。
-  // 「盤面を確認する」を押した場合はポップアップを閉じ、この埋め込みバナーで操作する。
+  // 「盤面を確認する」を押した場合はポップアップを閉じ、盤面のすぐ下（peekSlot）にこの埋め込みバナーを差し込む。
   const pd0 = pendingDescriptor(state);
   const peekKey = pd0 ? pd0.key+":"+pd0.id : null;
   if(myBanner){
     if(boardPeekFor === peekKey){
-      wrap.appendChild(myBanner);
+      peekSlot.appendChild(myBanner);
       myBanner = null;
     }
   } else {
@@ -3691,6 +3972,10 @@ function processCutinQueue(){
   const ev = cutinLocalQueue.shift();
   if(!ev) return;
   cutinBusy = true;
+  if(ev.special==="myturn"){
+    showMyTurnCutin(ev.p, ()=>{ cutinBusy=false; processCutinQueue(); });
+    return;
+  }
   // まだ後続が控えている場合は短縮表示にする
   const shortened = cutinLocalQueue.length > 0;
   showGenericCutin(ev, ()=>{ cutinBusy=false; processCutinQueue(); }, shortened);
@@ -3764,6 +4049,15 @@ function playDrum(ctx, t, gain){
   osc.connect(g); g.connect(ctx.destination);
   osc.start(t); osc.stop(t+0.55);
 }
+// 「あなたの番です」専用のファンファーレ（太鼓の一撃＋上昇する鈴の3音＋最後に伸びる余韻）。
+// 他の演出音（単発の拍子木・鈴・斬撃）とは明確に違う、華やかで長めの合図にする。
+function playMyTurnFanfare(ctx, t){
+  playDrum(ctx, t, 0.24);
+  playBell(ctx, t+0.08, 587.33, 0.15, 0.45);   // レ
+  playBell(ctx, t+0.24, 739.99, 0.16, 0.45);   // ファ#
+  playBell(ctx, t+0.40, 987.77, 0.24, 1.5);    // シ（響かせて余韻を残す）
+  playWoodBlock(ctx, t+0.40, 1500, 0.14);
+}
 function playSound(kind){
   if(!SOUND_ON) return;
   let ctx;
@@ -3777,7 +4071,7 @@ function playSound(kind){
     case "parry":    playWoodBlock(ctx, t, 1250, 0.22); playBell(ctx, t+0.02, 1480, 0.09, 0.7); break;
     case "bujin":    playBell(ctx, t, 520, 0.13, 1.0); playWoodBlock(ctx, t, 430, 0.1); break;
     case "eliminate":playDrum(ctx, t, 0.26); playBell(ctx, t+0.06, 220, 0.12, 1.6); break;
-    case "myturn":   playWoodBlock(ctx, t, 900, 0.18); playWoodBlock(ctx, t+0.13, 900, 0.18); break;
+    case "myturn":   playMyTurnFanfare(ctx, t); break;
     case "notify":   playBell(ctx, t, 880, 0.12, 0.9); break;
     default: playWoodBlock(ctx, t, 800, 0.16);
   }
@@ -3829,13 +4123,44 @@ function updateTurnNotification(state, p){
     document.title = `【！】${need.label} ｜ ${BASE_TITLE}`;
     if(need.key !== lastNotifyKey){
       lastNotifyKey = need.key;
-      // タブを見ていない時だけ音で知らせる（見ている時はカットインや画面で分かるため）
-      if(document.hidden) playSound(need.key.startsWith("turn:") ? "myturn" : "notify");
+      // タブを見ていない時だけ音で知らせる（見ている時はカットインや画面で分かるため）。
+      // 手番開始そのものの合図は showMyTurnCutin 側の専用ファンファーレが担うため、ここでは重複させない。
+      if(document.hidden && !need.key.startsWith("turn:")) playSound("notify");
     }
   } else {
     document.title = BASE_TITLE;
     lastNotifyKey = null;
   }
+}
+// 「あなたの番です」専用のカットイン（中央ポップ＋放射状フラッシュ）。他のカットインとは見た目・尺とも別物にする。
+function showMyTurnCutin(p, onDone){
+  playSound("myturn");
+  const img = illustUrl((BUJIN_META[p.bujin]||{}).illust);
+  const overlay = document.createElement("div");
+  overlay.className = "cutin-overlay myturn-overlay";
+  overlay.innerHTML = `
+    <div class="myturn-burst"></div>
+    <div class="myturn-banner">
+      ${img? `<img class="myturn-portrait" src="${img}" alt="">` : `<div class="myturn-noimg">${esc((p.bujin||'').slice(0,1))}</div>`}
+      <div class="myturn-tag">${esc(p.bujin||'')}</div>
+      <div class="myturn-title">あなたの番です</div>
+      <div class="myturn-sub">${esc(p.name)}</div>
+    </div>`;
+  document.body.appendChild(overlay);
+  const holdMs = 1700;
+  let done = false;
+  const outT = setTimeout(()=>{ overlay.classList.add("cutin-out"); }, holdMs);
+  const endT = setTimeout(finish, holdMs+400);
+  function finish(){
+    if(done) return;
+    done = true;
+    clearTimeout(outT); clearTimeout(endT);
+    overlay.remove();
+    if(onDone) onDone();
+  }
+  overlay.style.pointerEvents = "auto";
+  overlay.addEventListener("click", finish);
+  overlay.addEventListener("touchstart", finish, {passive:true});
 }
 function showGenericCutin(ev, onDone, shortened){
   const img = eventImage(ev);
@@ -3959,12 +4284,15 @@ function syncStatePopups(state, p, myBanner, peekKey){
     const pb = state.pendingBushido;
     const owner = state.playerState[pb.ownerId];
     const isOwner = pb.ownerId===ME.id;
+    const bushidoCard = owner.kakugo.find(k=>k.name==="武士道");
     box.className = "wide";
     box.innerHTML = `
       <h3>開示（武士道）</h3>
       <p><b>${esc(owner.name)}</b> の「武士道」が武器カードを開示しました。</p>
       <div id="bushido-revealed" class="hand-strip" style="margin:8px 0"></div>
       <p class="muted">手札の武器カードを1枚捨てて左隣に渡すか、名誉点を1点失って捨て札にするかを選びます。</p>
+      <div class="muted" style="margin-top:2px">覚悟「武士道」の効果（カードにカーソルを合わせる／タップすると確認できます）：</div>
+      <div id="bushido-effect-card" class="hand-strip" style="margin-top:4px"></div>
       ${isOwner
         ? `<div class="row" style="margin-top:6px"><button class="btn-main" id="btn-bushido-honor">名誉点を1点失って捨て札にする</button></div>
            <div class="muted" style="margin-top:8px" id="bushido-weapon-label"></div>
@@ -3972,6 +4300,7 @@ function syncStatePopups(state, p, myBanner, peekKey){
         : `<p class="muted" style="margin-top:8px">${esc(owner.name)} が選んでいます…</p>`
       }`;
     if(pb.revealedCard) box.querySelector("#bushido-revealed").appendChild(cardEl(pb.revealedCard,{}));
+    if(bushidoCard) box.querySelector("#bushido-effect-card").appendChild(cardEl(bushidoCard,{}));
     if(isOwner){
       const myWeapons = owner.hand.filter(c=>c.kind==="武器");
       box.querySelector("#bushido-weapon-label").textContent = `武器カードを捨てて左隣に渡す：${myWeapons.length? '' : '（該当カードなし）'}`;
@@ -4318,28 +4647,56 @@ function renderEnded(){
   const doujiTeams = Object.keys(res.doujiUchi||{}).filter(t=>res.doujiUchi[t]);
 
   const box = el(`<div class="card-box"><h2>最終得点</h2>
-    <div id="score-table"></div>
+    <div id="score-table" style="overflow-x:auto"></div>
     ${doujiTeams.length? `<hr class="rule"><p class="muted">同士討ち：同じ陣営の武人に討たれてゲームが終了したため、<b>${doujiTeams.map(esc).join("、")}</b> は合計から-3点されました。</p>` : ""}
     <hr class="rule">
     <div id="team-totals"></div>
   </div>`);
 
+  // 倍率がなぜその値なのかを一言で示す（手裏剣マークが根拠になる場合はそれを、それ以外は人数・身分による固定倍率である旨を表示）
+  function multReasonText(d){
+    if(d.shuriken) return `手裏剣${shurikenMarks(d.shuriken)}（${d.shuriken}つ）`;
+    if(d.mult===1) return "";
+    return `${res.n}人戦・${esc(d.role)}の倍率`;
+  }
+
   const table = box.querySelector("#score-table");
+  const tableEl = el(`<table class="score-table-el">
+    <thead><tr>
+      <th>プレイヤー</th><th>名誉点</th><th></th><th>倍率</th><th></th><th>小計</th><th></th><th>家臣</th><th></th><th>個人合計</th>
+    </tr></thead>
+    <tbody></tbody>
+  </table>`);
+  const tbody = tableEl.querySelector("tbody");
   res.detail.forEach(d=>{
-    const starNote = d.shuriken ? `　<span class="shuriken-note">${esc(shurikenMarks(d.shuriken))}</span>` : "";
-    const kashinNote = d.kashin>0 ? ` ＋家臣${d.kashin}` : "";
-    table.appendChild(el(`<div class="result-row">
-      <span>${esc(d.name)}（${esc(d.role)}）${starNote}</span>
-      <span>名誉点${d.honor} × ${d.mult} = ${d.subtotal}${kashinNote} = <b>${d.subtotal + d.kashin}</b></span>
-    </div>`));
+    const reason = multReasonText(d);
+    const personalTotal = d.subtotal + d.kashin;
+    tbody.appendChild(el(`<tr>
+      <td><span class="sc-name">${esc(d.name)}</span><span class="sc-reason">${esc(d.role)}／${esc(d.team)}</span></td>
+      <td>${d.honor}</td>
+      <td class="sc-op">×</td>
+      <td>${d.mult}${reason? `<span class="sc-reason">${esc(reason)}</span>`:""}</td>
+      <td class="sc-op">=</td>
+      <td>${d.subtotal}</td>
+      <td class="sc-op">+</td>
+      <td>${d.kashin}${d.kashin>0? `<span class="sc-reason">手札の「家臣」</span>`:""}</td>
+      <td class="sc-op">=</td>
+      <td class="sc-total">${personalTotal}</td>
+    </tr>`));
   });
+  table.appendChild(tableEl);
 
   const tt = box.querySelector("#team-totals");
   tt.innerHTML = "<h2>陣営別合計</h2>";
   Object.keys(teams).forEach(t=>{
+    const members = res.detail.filter(d=>d.team===t);
+    const memberSum = members.reduce((s,d)=>s+d.subtotal+d.kashin,0);
+    const penalized = res.doujiUchi && res.doujiUchi[t];
+    const breakdown = members.map(d=>`${esc(d.name)} ${d.subtotal+d.kashin}`).join(" + ");
     tt.appendChild(el(`<div class="result-team ${winners.includes(t)?'win':''}">
       <div class="result-row"><b>${esc(t)}</b><b>${teams[t]}点</b></div>
-      ${winners.includes(t)?'<div class="pill pill-gold">勝利</div>':''}
+      <div class="muted" style="font-size:11px;margin-top:-2px">${esc(breakdown)}${memberSum!==0? ` = ${memberSum}` : ""}${penalized? `　－　同士討ち 3点　＝　<b>${teams[t]}点</b>` : ""}</div>
+      ${winners.includes(t)?'<div class="pill pill-gold" style="margin-top:6px">勝利</div>':''}
     </div>`));
   });
 
