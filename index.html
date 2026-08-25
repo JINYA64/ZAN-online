@@ -113,7 +113,7 @@ h1,h2,h3,.mincho{font-family:"Shippori Mincho",serif;}
 label{font-size:12px;color:#5b5347;display:block;margin-bottom:4px;letter-spacing:0.05em;}
 input[type=text],input[type=number]{
   width:100%;padding:9px 10px;border:1px solid var(--paper-line);border-radius:3px;
-  background:#FBF8F0;font-size:15px;font-family:inherit;color:var(--ink);
+  background:#FBF8F0;font-size:16px;font-family:inherit;color:var(--ink); /* 16px未満だとiOS Safariがタップ時に自動ズームしてしまうため16px以上にする */
 }
 input[type=text]:focus,input[type=number]:focus{outline:2px solid var(--gold);outline-offset:1px;}
 button{
@@ -257,6 +257,7 @@ hr.rule{border:none;border-top:1px dashed var(--paper-line);margin:12px 0;}
 .kakugo-icon-pop .nm{font-size:13px;font-weight:800;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,0.6);}
 .kakugo-icon-pop .fx{font-size:9.5px;font-weight:400;line-height:1.5;margin-top:4px;}
 .kakugo-icon:hover .kakugo-icon-pop{display:block;}
+.kakugo-icon.tap-open .kakugo-icon-pop{display:block;}
 .bujin-hover-pop{
   display:none;position:absolute;top:100%;left:0;margin-top:6px;z-index:10;
   width:190px;background:linear-gradient(165deg,#1F1B15,#14110D);color:#fff;
@@ -266,6 +267,7 @@ hr.rule{border:none;border-top:1px dashed var(--paper-line);margin:12px 0;}
 .bujin-hover-pop .nm{font-size:13px;font-weight:800;margin-bottom:4px;text-shadow:0 1px 3px rgba(0,0,0,0.6);}
 .bujin-hover-pop .fx{font-size:10px;color:#e8e2d4;line-height:1.5;}
 .bujin-hover:hover .bujin-hover-pop{display:block;}
+.bujin-hover.tap-open .bujin-hover-pop{display:block;}
 .center-cluster{
   position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
   display:flex;align-items:center;gap:12px;z-index:2;
@@ -316,6 +318,7 @@ hr.rule{border:none;border-top:1px dashed var(--paper-line);margin:12px 0;}
 .discard-count-pill b{color:var(--vermillion-dark);font-size:12px;}
 .discard-count-pill .of{color:#9a927f;font-size:10px;}
 .discard-board:hover .discard-board-pop{display:block;}
+.discard-board.tap-open .discard-board-pop{display:block;}
 
 /* ---------- hand ---------- */
 .hand-strip{display:flex;flex-wrap:wrap;gap:8px;padding:6px 0;}
@@ -629,10 +632,26 @@ hr.rule{border:none;border-top:1px dashed var(--paper-line);margin:12px 0;}
   .center-cluster{position:static;transform:none;margin:6px 0;justify-content:center;flex-wrap:wrap;}
 }
 
+/* ---------- スマホ表示：タップ領域を広げる ---------- */
+@media (max-width:640px){
+  button{padding:12px 18px;font-size:14px;min-height:44px;}
+  .btn-sm{padding:9px 14px;font-size:12.5px;min-height:38px;}
+  .row{gap:10px;}
+  .row button{margin-bottom:2px;}
+  input[type=text],input[type=number]{padding:12px 12px;min-height:44px;}
+  .kakugo-icon{width:38px;height:38px;}
+  .discard-board{padding:11px 15px;}
+  .bujin-row{padding:10px;}
+  .player-pick{padding:10px 12px;}
+}
+
 /* ---------- スマホ表示：円形配置をやめ、将軍を先頭に行動順の縦並びにする ---------- */
 .table-wrap-mobile{min-height:0;padding:12px;display:flex;flex-direction:column;}
 .center-info-mobile{
-  position:static;width:auto;height:auto;border-radius:8px;padding:10px 16px;margin:0 0 10px;
+  /* position:staticのままだと、position:absoluteかつz-index:0の.table-wrap-bg（背景の質感レイヤー）が
+     描画順の都合で上に乗ってしまい、山札の枚数表示が隠れて見えなくなる。position:relativeにして
+     独自のスタッキングコンテキストに乗せ、z-indexで確実に背景より前面に出す。 */
+  position:relative;z-index:2;width:auto;height:auto;border-radius:8px;padding:10px 16px;margin:0 0 10px;
   background:radial-gradient(ellipse at center, #FFFDF7 0%, #F7F1E0 100%);border:1.5px solid var(--gold);
   box-shadow:0 4px 12px rgba(34,31,27,0.15);align-self:center;
 }
@@ -980,6 +999,17 @@ document.getElementById("modal-overlay").addEventListener("click",(e)=>{
   // 応答待ちのポップアップ（攻撃への応答・開示の確認など）は、誤操作で消えないよう背景クリックでは閉じない
   if(document.getElementById("modal-overlay").dataset.noDismiss==="1") return;
   closeModal();
+});
+
+// ホバーが使えないタッチ端末向け：覚悟アイコン／武人アイコン／捨て札の詳細をタップで開閉できるようにする
+// （ホバー版のポップアップも残しているので、マウス操作の環境ではそのまま従来通り動く）
+document.addEventListener("click",(e)=>{
+  const opener = e.target.closest(".kakugo-icon, .bujin-hover, .discard-board");
+  const alreadyOpen = opener && opener.classList.contains("tap-open");
+  document.querySelectorAll(".tap-open").forEach(el=>{
+    if(el!==opener) el.classList.remove("tap-open");
+  });
+  if(opener) opener.classList.toggle("tap-open", !alreadyOpen);
 });
 
 /* =========================================================
@@ -3362,11 +3392,21 @@ function cardTotalCount(name){
   ACTION_DATA.forEach(([nm,,count])=>{ if(nm===name) t = count; });
   return t;
 }
-function renderSeats(state){
-  if(isMobileView()) return renderSeatsMobile(state);
-  const n = state.seatOrder.length;
-  // 人数が増えるほど座席が密集するので、リングの大きさと座席幅を人数に応じて調整する
-  const layout = {
+// 現在のレイアウト（1カラム／2カラム）で、盤面（.table-wrap）が実際に取れる横幅をおおよそ見積もる。
+// 実測ではなく見積もりなので、安全側（やや小さめ）に倒している。
+function estimateBoardWidth(){
+  const vw = window.innerWidth;
+  if(vw < 960){
+    const contentWidth = Math.min(vw, 1180) - 28;
+    return Math.max(260, contentWidth);
+  }
+  const contentWidth = vw - 48; // ゲーム画面は #app.app-full（max-width:none / 左右padding24px）
+  const rightWidth = Math.min(600, contentWidth/2 - 20);
+  return Math.max(260, contentWidth - rightWidth - 20);
+}
+// 人数ごとの基準レイアウトを、実際の盤面幅に収まるように縮小する（座席カードが卓からはみ出さないようにする）
+function computeSeatLayout(n, containerWidth){
+  const base = {
     3:{h:430, rx:36, ry:33, w:200},
     4:{h:460, rx:38, ry:35, w:200},
     5:{h:480, rx:40, ry:36, w:195},
@@ -3374,6 +3414,29 @@ function renderSeats(state){
     7:{h:530, rx:42, ry:38, w:182},
     8:{h:560, rx:43, ry:39, w:174}
   }[n] || {h:530, rx:42, ry:38, w:182};
+  let {h, rx, ry, w} = base;
+  const minW = 112; // これ以上縮めると座席内の文字が読めなくなる下限
+  if(containerWidth>0){
+    // 座席カードは中心から角度rx%の位置に幅wpxで中央揃え配置されるため、
+    // 「中心からリング外周までの余白(px)」より座席カード半分の幅が大きいとはみ出す。
+    let marginPx = (50-rx)/100*containerWidth;
+    if(w/2 > marginPx){
+      // まずリング半径を少し詰めて余白を稼ぎ、それでも足りなければ座席カード自体を縮める
+      rx = Math.max(28, rx-8);
+      marginPx = (50-rx)/100*containerWidth;
+      w = Math.max(minW, Math.min(w, Math.floor(marginPx*2)));
+      // 縦方向のringの高さも、縮めた分だけ少し詰めて余白のバランスを取る
+      h = Math.max(360, Math.round(h * (w/base.w)));
+    }
+  }
+  return {h, rx, ry, w};
+}
+function renderSeats(state){
+  if(isMobileView()) return renderSeatsMobile(state);
+  const n = state.seatOrder.length;
+  // 人数が増えるほど座席が密集するので、リングの大きさと座席幅を人数に応じて調整する。
+  // さらに、実際に確保できる盤面の横幅に収まるよう追加で縮小する（座席が卓からはみ出るのを防ぐ）。
+  const layout = computeSeatLayout(n, estimateBoardWidth());
   const cx=50, cy=50, rx=layout.rx, ry=layout.ry;
   const ring = el(`<div class="seat-ring" style="height:${layout.h}px"></div>`);
   state.seatOrder.forEach((id,i)=>{
