@@ -1406,15 +1406,17 @@ function revealCards(state, n){
   }
   return revealed;
 }
-function announceReveal(state, text, cards){
+function announceReveal(state, text, cards, meta){
   // 開示の結果を全員に知らせ、全員が確認するまで次の行動をブロックする
+  // meta（任意）：{kakugoName, ownerId} を渡すと、ポップアップ内でその覚悟カードの効果も確認できるようにする
   const newCards = (cards||[]).map(c=>slimCard(c));
   if(state.pendingReveal){
     state.pendingReveal.text += "\n" + text;
     state.pendingReveal.cards = (state.pendingReveal.cards||[]).concat(newCards);
     state.pendingReveal.ackBy = [];
+    if(meta) state.pendingReveal.metas = (state.pendingReveal.metas||[]).concat([meta]);
   } else {
-    state.pendingReveal = {id:uid(), text, cards:newCards, ackBy:[]};
+    state.pendingReveal = {id:uid(), text, cards:newCards, ackBy:[], metas: meta?[meta]:[]};
   }
   log(state, `【開示】${text}`);
 }
@@ -2073,7 +2075,7 @@ function applyShukketsuReveal(state, id, card){
     else { txt += ` → 魂コマは最後の1個のため失わない。`; }
   }
   fireCardEvent(state, "kakugo", p.name, "出血", cutinDetail);
-  announceReveal(state, txt, [card]);
+  announceReveal(state, txt, [card], {kakugoName:"出血", ownerId:id});
 }
 function checkBushidoReveal(state, id){
   const p = state.playerState[id];
@@ -4313,15 +4315,33 @@ function syncStatePopups(state, p, myBanner, peekKey){
     const pr = state.pendingReveal;
     const acked = pr.ackBy.includes(ME.id);
     const waiting = state.seatOrder.filter(pid=>!pr.ackBy.includes(pid)).map(pid=>state.playerState[pid].name);
+    // 「出血」など、開示の原因になった覚悟カード自体も確認できるようにする（重複は除く）
+    const metas = pr.metas||[];
+    const seenMeta = new Set();
+    const metaCards = [];
+    metas.forEach(m=>{
+      const key = m.kakugoName+":"+m.ownerId;
+      if(seenMeta.has(key)) return;
+      seenMeta.add(key);
+      const ownerP = state.playerState[m.ownerId];
+      const kc = ownerP && ownerP.kakugo.find(k=>k.name===m.kakugoName);
+      if(kc) metaCards.push({card:kc, ownerName:ownerP.name});
+    });
     box.className = "wide";
     box.innerHTML = `
       <h3>開示結果</h3>
       <p style="white-space:pre-wrap">${esc(pr.text)}</p>
       <div id="reveal-cards" class="hand-strip" style="margin:6px 0"></div>
+      ${metaCards.length>0? `<div class="muted" style="margin-top:2px">開示の原因になった覚悟カードの効果（カードにカーソルを合わせる／タップすると確認できます）：</div>
+      <div id="reveal-meta-cards" class="hand-strip" style="margin-top:4px"></div>` : ""}
       <p class="muted">確認待ち：${waiting.map(esc).join("、")||"（まもなく再開）"}</p>
       ${acked? "" : `<div class="row" style="margin-top:8px"><button class="btn-main" id="btn-ack-reveal">確認した</button></div>`}`;
     const cardsEl = box.querySelector("#reveal-cards");
     (pr.cards||[]).forEach(c=>{ cardsEl.appendChild(cardEl(c,{})); });
+    if(metaCards.length>0){
+      const metaEl = box.querySelector("#reveal-meta-cards");
+      metaCards.forEach(({card,ownerName})=>{ metaEl.appendChild(cardEl(card,{})); });
+    }
     if(!acked){ const btn=box.querySelector("#btn-ack-reveal"); if(btn) btn.onclick=ackReveal; }
     overlay.classList.remove("hidden");
     overlay.dataset.noDismiss="1";
