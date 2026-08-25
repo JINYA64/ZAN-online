@@ -3875,13 +3875,18 @@ function renderGame(){
 
   wrap.appendChild(statusBox);
 
-  // my hand (always visible, for browsing)
-  const handBox = el(`<div class="card-box"><h2>あなたの手札（${p.hand.length}枚）</h2><div class="hand-strip" id="my-hand"></div></div>`);
-  p.hand.forEach(c=>{
-    const cd = cardEl(c,{});
-    handBox.querySelector("#my-hand").appendChild(cd);
-  });
-  wrap.appendChild(handBox);
+  // my hand（参照用）：行動フェイズ・捨て札フェイズは左カラムに操作用の手札が別途出るため、
+  // 同じ手札が二重に表示されて紛らわしくならないよう、その間はこちらを非表示にする。
+  const handAlreadyShownOnLeft = myTurn && (state.turnPhase==="action" || state.turnPhase==="discard") && !pendingDescriptor(state);
+  let handBox = null;
+  if(!handAlreadyShownOnLeft){
+    handBox = el(`<div class="card-box"><h2>あなたの手札（${p.hand.length}枚）</h2><div class="hand-strip" id="my-hand"></div></div>`);
+    p.hand.forEach(c=>{
+      const cd = cardEl(c,{});
+      handBox.querySelector("#my-hand").appendChild(cd);
+    });
+    wrap.appendChild(handBox);
+  }
 
   const logBox = el(`<div class="card-box"><h2>ログ</h2>
     <div class="log-box" id="log-box"></div>
@@ -3903,7 +3908,7 @@ function renderGame(){
   });
   rightCol.appendChild(logBox);
   rightCol.appendChild(statusBox);
-  rightCol.appendChild(handBox);
+  if(handBox) rightCol.appendChild(handBox);
   const columns = el(`<div class="game-columns"></div>`);
   columns.appendChild(leftCol);
   columns.appendChild(rightCol);
